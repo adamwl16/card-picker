@@ -2,63 +2,115 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Card Picker</title>
 <style>
-:root{--bg:#fff;--fg:#111;--muted:#666;--panel:#f2f2f5;--accent:#0a7c55}
-@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#eee;--muted:#999;--panel:#1c1c1e;--accent:#30d18c}}
-body{font:16px -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0 auto;padding:16px;max-width:560px}
-h1{font-size:1.4rem}
-.panel{background:var(--panel);border-radius:14px;padding:16px;margin:12px 0}
-.muted{color:var(--muted);font-size:.9rem}
-#best{font-size:1.5rem;font-weight:700;color:var(--accent)}
-button,a.btn,select,textarea{font:inherit;width:100%;box-sizing:border-box;border-radius:10px;padding:12px;margin-top:8px}
-button,a.btn{border:0;background:var(--fg);color:var(--bg);display:block;text-align:center;text-decoration:none;font-weight:600}
-input{font:inherit;width:100%;box-sizing:border-box;border-radius:10px;padding:12px;margin-top:8px}
-input,select,textarea{border:1px solid var(--muted);background:var(--bg);color:var(--fg)}
-textarea{min-height:140px;font-family:ui-monospace,monospace;font-size:.85rem}
-ol{padding-left:20px}
+:root{--bg:#f4f4f7;--surface:#fff;--fg:#111114;--muted:#6b6b76;--line:#e4e4ea;--accent:#4f46e5;--accent-fg:#fff;--shadow:0 12px 30px rgba(20,20,50,.22)}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0b0e;--surface:#17171c;--fg:#f2f2f5;--muted:#9a9aa6;--line:#2a2a33;--accent:#8b8cff;--accent-fg:#0b0b0e;--shadow:0 12px 30px rgba(0,0,0,.6)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:520px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom))}
+h1{font-size:1.75rem;letter-spacing:-.02em;margin:4px 0 16px}
+h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:28px 4px 8px}
+
+/* Card art: an image if the manager set one, otherwise a gradient in the card's color */
+.cc{position:relative;aspect-ratio:1.586;border-radius:16px;overflow:hidden;color:#fff;
+  background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 45%,#000));box-shadow:var(--shadow);animation:pop .35s ease-out}
+.cc::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 0 0,rgba(255,255,255,.28),transparent 55%);pointer-events:none}
+.cc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.chip{position:absolute;left:7%;top:38%;width:13%;aspect-ratio:1.3;border-radius:6px;background:linear-gradient(135deg,#f6e2a6,#b8913f)}
+.cc-name{position:absolute;left:7%;right:7%;bottom:9%;font-weight:600;font-size:1.15rem;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.cc-rate{position:absolute;top:7%;right:6%;z-index:1;padding:4px 12px;border-radius:99px;font-weight:700;
+  background:rgba(255,255,255,.22);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.35)}
+.cc.sm{width:56px;flex:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:none}
+.cc.sm .chip,.cc.sm .cc-name{display:none}
+.empty{aspect-ratio:1.586;border-radius:16px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted)}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.cc{animation:none}}
+
+#bestName{font-size:1.35rem;font-weight:700;letter-spacing:-.01em;margin-top:16px}
+#bestWhy{color:var(--accent);font-weight:600}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;margin-top:14px;border:0;border-radius:14px;
+  font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.btn:active{opacity:.8}
+.btn.primary{background:var(--accent);color:var(--accent-fg)}
+.btn.wallet{background:#000;color:#fff;border:1px solid #333}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.panel .btn:first-child{margin-top:0}
+.status{font-size:.85rem;color:var(--muted);margin:10px 2px 0;min-height:1.2em}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:0 10px}
+.grid.even{grid-template-columns:1fr 1fr}
+label{display:block;font-size:.8rem;color:var(--muted);margin-top:12px}
+select,input,textarea{display:block;width:100%;margin-top:6px;padding:12px;border-radius:12px;border:1px solid var(--line);
+  background:var(--bg);color:var(--fg);font:inherit;font-size:16px}
+select{appearance:none;-webkit-appearance:none;padding-right:32px;text-overflow:ellipsis;
+  background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
+textarea{min-height:170px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+.list{list-style:none;margin:0;padding:4px 16px}
+.list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list b{color:var(--muted);font-weight:600}
+details summary{font-weight:600;cursor:pointer}
+.hint{font-size:.85rem;color:var(--muted)}
+code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
 </style>
 </head>
 <body>
+<main>
 <h1>Which card?</h1>
-<button id="locate">📍 Find where I am</button>
-<p id="status" class="muted"></p>
 
+<div id="hero"></div>
+<div id="bestName"></div>
+<div id="bestWhy"></div>
+<!-- ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
+<a class="btn wallet" href="shoebox://">
+  <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="1" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1 6h18" stroke="currentColor" stroke-width="2"/></svg>
+  Open Apple Wallet</a>
+
+<h2>Where are you?</h2>
 <div class="panel">
-  <label class="muted">Store <select id="place"><option value="">— none found —</option></select></label>
-  <label class="muted">Category <select id="cat"></select></label>
+  <button id="locate" class="btn primary">📍 Find my store</button>
+  <p id="status" class="status"></p>
+  <div class="grid">
+    <label>Store <select id="place"><option value="">Not located yet</option></select></label>
+    <label>Category <select id="cat"></select></label>
+  </div>
 </div>
 
-<div class="panel">
-  <div class="muted">Best card</div>
-  <div id="best">—</div>
-  <ol id="ranked" class="muted"></ol>
-  <!-- ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
-  <a class="btn" href="shoebox://">Open Apple Wallet</a>
-</div>
+<h2>Other cards</h2>
+<ul id="ranked" class="list panel"></ul>
 
 <div id="manager" hidden>
-<h1>Manager</h1>
-<details class="panel" open>
-  <summary>Best card per category</summary>
-  <p class="muted">Pick the card to use for each category. "Auto" uses the highest rate from Cards.</p>
-  <div id="overrides"></div>
-</details>
+  <h2>Manager · best card per category</h2>
+  <div class="panel">
+    <p class="hint" style="margin:0">"Auto" uses the highest rate from Cards.</p>
+    <div id="overrides" class="grid even"></div>
+  </div>
 
-<details class="panel">
-  <summary>Cards</summary>
-  <p class="muted">One card per line: <code>Name | category rate, …</code>. Categories: gas, grocery, pharmacy, dining, travel, wholesale, other. <code>other</code> is the fallback rate. Anything else is a merchant and beats the category there, e.g. <code>Chase Freedom Flex | walmart 5, other 1</code> (matches "Walmart Supercenter" too).</p>
-  <textarea id="cards"></textarea>
-</details>
+  <h2>Manager · cards</h2>
+  <details class="panel">
+    <summary>Edit cards</summary>
+    <p class="hint">One card per line: <code>Name | category rate, … | look</code>.
+      Categories: gas, grocery, pharmacy, dining, travel, wholesale, other (<code>other</code> is the fallback rate).
+      Anything else is a merchant and beats the category there, e.g. <code>walmart 5</code> (matches "Walmart Supercenter" too).
+      <code>look</code> is optional: an <code>https://</code> image URL of the card, or a color like <code>#b8925a</code>.</p>
+    <textarea id="cards" spellcheck="false"></textarea>
+  </details>
 
-<div class="panel">
-  <label class="muted">GitHub token (fine-grained, Contents read/write on this repo only; stays on this device)
-    <input id="token" type="password" autocomplete="off"></label>
-  <button id="publish">Publish to everyone</button>
-  <p id="pubStatus" class="muted"></p>
+  <h2>Manager · publish</h2>
+  <div class="panel">
+    <label style="margin-top:0">GitHub token (stays on this device)
+      <input id="token" type="password" autocomplete="off"></label>
+    <button id="publish" class="btn primary">Publish to everyone</button>
+    <p id="pubStatus" class="status"></p>
+  </div>
 </div>
-</div>
+</main>
 
 <script>
 const CATS = ['gas','grocery','pharmacy','dining','travel','wholesale','other'];
@@ -83,10 +135,12 @@ function category(t){
   return brandCat(t.brand) || brandCat(t.name) || TAGS[t.amenity] || TAGS[t.shop] || TAGS[t.tourism] || 'other';
 }
 function parseCards(text){
-  return text.split('\n').map(l => l.split('|')).filter(p => p[0].trim()).map(([name, r='']) => ({
+  return text.split('\n').map(l => l.split('|')).filter(p => p[0].trim()).map(([name, r='', look='']) => ({
     name: name.trim(),
     rates: Object.fromEntries(r.split(',').map(s => s.trim().match(/^(.+?)\s+([\d.]+)/)).filter(Boolean)
-      .map(([, k, v]) => [k.toLowerCase(), parseFloat(v)]))
+      .map(([, k, v]) => [k.toLowerCase(), parseFloat(v)])),
+    img: /^https:\/\/\S+$/.test(look.trim()) ? look.trim() : '',
+    color: /^#[0-9a-f]{3,8}$/i.test(look.trim()) ? look.trim() : ''
   }));
 }
 // Rate keys that aren't categories are merchants ("walmart 5") and beat the card's category rate there.
@@ -98,7 +152,7 @@ function rank(cards, cat, best = {}, store = ''){
   });
   const pin = scored.find(c => c.name === best[cat]);
   const top = pin && !scored.some(c => c.merchant && c.rate > pin.rate) ? pin.name : null;
-  return scored.sort((a, b) => (b.name === top) - (a.name === top) || b.rate - a.rate);
+  return scored.sort((a, b) => (b.name === top) - (a.name === top) || b.rate - a.rate || b.merchant - a.merchant);
 }
 function meters(lat1, lon1, lat2, lon2){
   const r = Math.PI/180, x = (lon2-lon1)*r*Math.cos((lat1+lat2)/2*r), y = (lat2-lat1)*r;
@@ -115,7 +169,7 @@ $('cat').value = 'other';
 
 function renderOverrides(){
   const names = parseCards($('cards').value).map(c => c.name);
-  $('overrides').innerHTML = CATS.map(cat => `<label class="muted">${cat}<select data-cat="${cat}">
+  $('overrides').innerHTML = CATS.map(cat => `<label>${cat}<select data-cat="${cat}">
     <option value="">Auto</option>${names.map(n => `<option${best[cat] === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}
   </select></label>`).join('');
 }
@@ -149,11 +203,20 @@ $('publish').onclick = async () => {
   } catch (e) { say('Publish failed: ' + e.message); }
 };
 
+function cardArt(c, small, rate){
+  const hue = [...c.name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+  return `<div class="cc${small ? ' sm' : ''}" style="--c:${c.color || `hsl(${hue} 45% 38%)`}">`
+    + (c.img ? `<img src="${esc(c.img)}" alt="">` : `<span class="chip"></span><span class="cc-name">${esc(c.name)}</span>`)
+    + (rate ? `<span class="cc-rate">${rate}x</span>` : '') + '</div>';
+}
+
 function render(){
-  const ranked = rank(parseCards($('cards').value), $('cat').value, best, store);
-  const label = c => `${c.name} · ${c.rate}x` + (c.merchant ? ` at ${store}` : '');
-  $('best').textContent = ranked[0] ? label(ranked[0]) : 'Add cards below';
-  $('ranked').innerHTML = ranked.slice(1).map(c => `<li>${esc(label(c))}</li>`).join('');
+  const [top, ...rest] = rank(parseCards($('cards').value), $('cat').value, best, store);
+  $('hero').innerHTML = top ? cardArt(top, false, top.rate) : '<div class="empty">No cards yet</div>';
+  $('bestName').textContent = top ? top.name : '';
+  $('bestWhy').textContent = top ? `${top.rate}x ` + (top.merchant ? `at ${store}` : `on ${$('cat').value}`) : '';
+  $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<span>${esc(c.name)}</span><b>${c.rate}x</b></li>`).join('')
+    || '<li><span class="hint">None</span></li>';
 }
 
 async function nearby(lat, lon){
@@ -167,7 +230,7 @@ async function nearby(lat, lon){
     .sort((a, b) => a.d - b.d);
 }
 
-$('locate').onclick = () => {
+function locate(){
   if (!navigator.geolocation) return $('status').textContent = 'Geolocation not supported.';
   $('status').textContent = 'Locating…';
   navigator.geolocation.getCurrentPosition(async ({coords}) => {
@@ -176,15 +239,18 @@ $('locate').onclick = () => {
       places = await nearby(coords.latitude, coords.longitude);
     } catch (e) { return $('status').textContent = 'Store lookup failed: ' + e.message; }
     $('place').innerHTML = places.length
-      ? places.map((p, i) => `<option value="${i}">${esc(p.name)} —${p.cat} (${p.d} m)</option>`).join('')
-      : '<option value="">— none found, pick a category —</option>';
-    $('status').textContent = places.length ? `Closest: ${places[0].name}. Wrong? Pick another below.` : 'No stores found nearby.';
+      ? places.map((p, i) => `<option value="${i}">${esc(p.name)} · ${p.d} m</option>`).join('')
+      : '<option value="">None found</option>';
+    $('status').textContent = places.length ? 'Not the right store? Pick another below.' : 'No stores found nearby. Pick a category.';
     if (places.length) { $('cat').value = places[0].cat; store = places[0].name; render(); }
   }, e => $('status').textContent = 'Location error: ' + e.message, {enableHighAccuracy: true, timeout: 15000});
-};
+}
+$('locate').onclick = locate;
 $('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; store = p.name; render(); } };
 $('cat').onchange = render;
 load();
+// Already allowed location before? Look up the store right away instead of waiting for a tap
+navigator.permissions?.query({name: 'geolocation'}).then(p => p.state === 'granted' && locate()).catch(() => {});
 
 // Self-check: open with #test, see console
 if (location.hash === '#test') {
@@ -202,6 +268,9 @@ if (location.hash === '#test') {
   console.assert(rank(M, 'grocery', {grocery:'Amex'}, 'Walmart Supercenter')[0].name === 'Flex');
   console.assert(rank(M, 'grocery', {grocery:'Dbl'}, 'Kroger')[0].name === 'Dbl');
   console.assert(rank(M, 'grocery', {}, 'Walmartian Deli')[0].name === 'Amex');
+  console.assert(rank(parseCards('Flex | grocery 5\nAmazon | whole foods 5'), 'grocery', {}, 'Whole Foods Market')[0].name === 'Amazon');
+  const L = parseCards('A | other 1 | https://x.test/a.png\nB | other 1 | #b8925a\nC | other 1 | javascript:alert(1)');
+  console.assert(L[0].img === 'https://x.test/a.png' && L[1].color === '#b8925a' && !L[2].img && !L[2].color);
   console.log('self-check done');
 }
 </script>
