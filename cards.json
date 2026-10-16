@@ -1,4 +1,6 @@
 {
-  "cards": "Amex Gold | dining 4, grocery 4, other 1\nChase Freedom Unlimited | dining 3, pharmacy 3, other 1.5\nCiti Custom Cash | gas 5, other 1\nCiti Double Cash | other 2",
-  "best": {}
+  "cards": "Chase Freedom Flex | dining 8, pharmacy 3, grocery 5, other 1\nChase Freedom | dining 5, other 1\nChase Sapphire | travel 4, dining 3, other 1\nAmazon | Whole Foods 5, amazon.com 5, other 1\nCiti Double Cash | other 2\nAmex | pharmacy 5, grocery 5, gas 5\nApple | ChargePoint 3",
+  "best": {
+    "dining": "Chase Freedom Flex"
+  }
 }
