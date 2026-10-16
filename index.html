@@ -29,7 +29,7 @@ h2.plain{text-transform:none;letter-spacing:0;font-size:.9rem}
 .cc-name{position:absolute;left:7%;right:7%;bottom:9%;font-weight:600;font-size:1.15rem;text-shadow:0 1px 3px rgba(0,0,0,.35)}
 .cc-rate{position:absolute;top:7%;right:6%;z-index:1;padding:4px 12px;border-radius:99px;font-weight:700;
   background:rgba(255,255,255,.22);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.35)}
-.cc.sm{width:56px;flex:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:none}
+.cc.sm{width:48px;flex:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:none}
 .cc.sm .chip,.cc.sm .cc-name{display:none}
 .empty{aspect-ratio:1.586;border-radius:16px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted)}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
@@ -68,11 +68,11 @@ select,input,textarea{display:block;width:100%;margin-top:6px;padding:12px;borde
 select{appearance:none;-webkit-appearance:none;padding-right:32px;text-overflow:ellipsis;
   background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
 textarea{min-height:170px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
-.list{list-style:none;margin:0;padding:4px 16px}
-.list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
-.list li:first-child{border-top:0}
-.list span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.list b{color:var(--muted);font-weight:600}
+.list{list-style:none;margin:0;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.list li{display:flex;align-items:center;gap:10px;min-width:0}
+.list li div{display:flex;flex-direction:column;min-width:0}
+.list span{font-size:.9rem;line-height:1.2;overflow-wrap:anywhere}
+.list b{color:var(--muted);font-weight:600;font-size:.85rem}
 details summary{font-weight:600;cursor:pointer}
 .hint{font-size:.85rem;color:var(--muted)}
 code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
@@ -239,7 +239,7 @@ function render(){
   $('locate').hidden = !!(store || picked);
   $('bestName').textContent = top ? top.name : '';
   $('bestWhy').textContent = top ? `${top.rate}x ` + (top.merchant ? `at ${store}` : `on ${$('cat').value}`) : '';
-  $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<span>${esc(c.name)}</span><b>${c.rate}x</b></li>`).join('')
+  $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<div><span>${esc(c.name)}</span><b>${c.rate}x</b></div></li>`).join('')
     || '<li><span class="hint">None</span></li>';
 }
 
