@@ -64,7 +64,7 @@ ol{padding-left:20px}
 const CATS = ['gas','grocery','pharmacy','dining','travel','wholesale','other'];
 // OSM tag value → category
 const TAGS = {fuel:'gas',pharmacy:'pharmacy',chemist:'pharmacy',supermarket:'grocery',grocery:'grocery',greengrocer:'grocery',
-  restaurant:'dining',fast_food:'dining',cafe:'dining',bar:'dining',pub:'dining',food_court:'dining',hotel:'travel',motel:'travel',wholesale:'wholesale'};
+  restaurant:'dining',fast_food:'dining',cafe:'dining',bar:'dining',pub:'dining',food_court:'dining',ice_cream:'dining',hotel:'travel',motel:'travel',wholesale:'wholesale'};
 // Brand name → category, wins over OSM tags (e.g. a Shell's convenience shop is still gas)
 const BRANDS = {cvs:'pharmacy',walgreens:'pharmacy','rite aid':'pharmacy',duane:'pharmacy',shell:'gas',chevron:'gas',exxon:'gas',mobil:'gas',bp:'gas',
   sunoco:'gas',citgo:'gas',valero:'gas',arco:'gas',costco:'wholesale',"sam's club":'wholesale',"bj's wholesale":'wholesale'};
@@ -146,15 +146,13 @@ function render(){
 }
 
 async function nearby(lat, lon){
-  const q = `[out:json][timeout:10];nwr(around:150,${lat},${lon})[name][~"^(shop|amenity|tourism)$"~"."];out tags center 40;`;
-  const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
-  // ponytail: free public OSM server, sometimes 502s when busy; one retry, swap to Google Places if it's too flaky
-  let res = await fetch(url);
-  if (res.status >= 500) { await new Promise(r => setTimeout(r, 3000)); res = await fetch(url); }
-  if (!res.ok) throw new Error('Overpass ' + res.status);
-  return (await res.json()).elements
-    .filter(e => e.tags.shop || TAGS[e.tags.amenity] || TAGS[e.tags.tourism] || brandCat(e.tags.brand || e.tags.name))
-    .map(e => ({name: e.tags.name, cat: category(e.tags), d: meters(lat, lon, e.lat ?? e.center.lat, e.lon ?? e.center.lon)}))
+  // ponytail: free OSM-based Photon API, no key; swap to Google Places if coverage or uptime falls short
+  const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=25&radius=0.15&osm_tag=shop&osm_tag=amenity&osm_tag=tourism`);
+  if (!res.ok) throw new Error('Photon ' + res.status);
+  return (await res.json()).features
+    .map(f => ({p: f.properties, c: f.geometry.coordinates}))
+    .filter(({p}) => p.name && (p.osm_key === 'shop' || TAGS[p.osm_value] || brandCat(p.name)))
+    .map(({p, c}) => ({name: p.name, cat: category({name: p.name, [p.osm_key]: p.osm_value}), d: meters(lat, lon, c[1], c[0])}))
     .sort((a, b) => a.d - b.d);
 }
 
