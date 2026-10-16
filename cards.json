@@ -1,5 +1,5 @@
 {
-  "cards": "Chase Freedom Flex | dining 8, pharmacy 3, grocery 5, other 1\nChase Freedom | dining 5, other 1\nChase Sapphire | travel 4, dining 3, other 1\nAmazon | Whole Foods 5, amazon.com 5, other 1\nCiti Double Cash | other 2\nAmex | pharmacy 5, grocery 5, gas 5\nApple | ChargePoint 3",
+  "cards": "Chase Freedom Flex | dining 8, pharmacy 3, grocery 5, other 1 | webp\nChase Freedom | dining 5, other 1\nChase Sapphire | travel 4, dining 3, other 1 | https://creditcards.chase.com/content/dam/jpmc-marketplace/site-assets/sapphire-halopalm/SR_card_shadow.png\nAmazon | Whole Foods 5, amazon.com 5, other 1\nCiti Double Cash | other 2\nAmex | pharmacy 5, grocery 5, gas 5\nApple | ChargePoint 3",
   "best": {
     "dining": "Chase Freedom Flex"
   }
