@@ -31,7 +31,14 @@ h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--mu
 .cc.sm .chip,.cc.sm .cc-name{display:none}
 .empty{aspect-ratio:1.586;border-radius:16px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted)}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
-@media (prefers-reduced-motion:reduce){.cc{animation:none}}
+
+/* A random face sticker floating somewhere silly; pointer-events:none so it never blocks a tap */
+h1,.hero-wrap,.wallet,.locate-panel{position:relative}
+html,body{overflow-x:clip}
+.sticker{position:absolute;width:76px;height:76px;z-index:2;pointer-events:none;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));animation:float 3.5s ease-in-out infinite}
+@keyframes float{50%{translate:0 -7px}}
+@media (prefers-reduced-motion:reduce){.cc,.sticker{animation:none}}
 
 #bestName{font-size:1.35rem;font-weight:700;letter-spacing:-.01em;margin-top:16px}
 #bestWhy{color:var(--accent);font-weight:600}
@@ -66,7 +73,7 @@ code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
 <main>
 <h1>Which card?</h1>
 
-<div id="hero"></div>
+<div class="hero-wrap"><div id="hero"></div></div>
 <div id="bestName"></div>
 <div id="bestWhy"></div>
 <!-- ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
@@ -75,7 +82,7 @@ code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
   Open Apple Wallet</a>
 
 <h2>Where are you?</h2>
-<div class="panel">
+<div class="panel locate-panel">
   <button id="locate" class="btn primary">📍 Find my store</button>
   <p id="status" class="status"></p>
   <div class="grid">
@@ -251,6 +258,20 @@ $('locate').onclick = locate;
 $('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; store = p.name; render(); } };
 $('cat').onchange = render;
 load();
+
+// Sticker: different photo than last time, random silly spot, random tilt
+(() => {
+  const spots = [['h1', 'right:0;top:-12px'], ['.hero-wrap', 'right:-10px;bottom:-22px'],
+    ['.wallet', 'left:-8px;bottom:-34px'], ['.locate-panel', 'right:10px;top:-46px']];
+  let last = -1;
+  try { last = +localStorage.getItem('sticker'); } catch {}
+  const n = (last + 1 + Math.floor(Math.random() * 3)) % 4;  // any of the other 3
+  try { localStorage.setItem('sticker', n); } catch {}
+  const [host, pos] = spots[Math.floor(Math.random() * spots.length)];
+  const img = Object.assign(new Image(), {src: `stickers/${n + 1}.png`, alt: '', className: 'sticker'});
+  img.style.cssText = `${pos};rotate:${Math.round(Math.random() * 36 - 18)}deg`;
+  document.querySelector(host).append(img);
+})();
 // Already allowed location before? Look up the store right away instead of waiting for a tap
 navigator.permissions?.query({name: 'geolocation'}).then(p => p.state === 'granted' && locate()).catch(() => {});
 
