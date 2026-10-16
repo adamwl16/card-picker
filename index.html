@@ -180,7 +180,7 @@ function meters(lat1, lon1, lat2, lon2){
 
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
-let best = {}, places = [], store = '', pickedCat = false;
+let best = {}, places = [], store = '', picked = '';
 $('manager').hidden = !new URLSearchParams(location.search).has('manage');
 try { $('token').value = localStorage.getItem('ghToken') || ''; } catch {}
 $('cat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
@@ -233,9 +233,12 @@ function render(){
   const [top, ...rest] = rank(parseCards($('cards').value), $('cat').value, best, store);
   $('hero').innerHTML = top ? cardArt(top, false, top.rate) : '<div class="empty">No cards yet</div>';
   const cat = $('cat').value;
-  $('headline').innerHTML = store ? `You're probably at <span class="where">${esc(store)}</span>, so use:`
-    : pickedCat ? `For <span class="where">${cat[0].toUpperCase() + cat.slice(1)}</span>, use:` : 'Which card?';
-  $('locate').hidden = !!store || pickedCat;
+  // picked: '' = nearest store from GPS, 'store'/'cat' = the person chose one in "Not right?"
+  const where = s => `<span class="where">${esc(s)}</span>`;
+  $('headline').innerHTML = picked === 'store' ? `For ${where(store)}, use:`
+    : picked === 'cat' ? `For ${where(cat[0].toUpperCase() + cat.slice(1))}, use:`
+    : store ? `You're probably at ${where(store)}, so use:` : 'Which card?';
+  $('locate').hidden = !!(store || picked);
   $('bestName').textContent = top ? top.name : '';
   $('bestWhy').textContent = top ? `${top.rate}x ` + (top.merchant ? `at ${store}` : `on ${$('cat').value}`) : '';
   $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<span>${esc(c.name)}</span><b>${c.rate}x</b></li>`).join('')
@@ -265,13 +268,13 @@ function locate(){
       ? '<option value="" hidden>Choose a store</option>' + places.map((p, i) => `<option value="${i}">${esc(p.name)} · ${p.d} m</option>`).join('')
       : '<option value="">None found</option>';
     $('status').textContent = places.length ? '' : 'No stores found nearby. Pick a category below.';
-    if (places.length) { $('place').value = '0'; $('cat').value = places[0].cat; store = places[0].name; pickedCat = false; render(); }
+    if (places.length) { $('place').value = '0'; $('cat').value = places[0].cat; store = places[0].name; picked = ''; render(); }
   }, e => $('status').textContent = 'Location error: ' + e.message, {enableHighAccuracy: true, timeout: 15000});
 }
 $('locate').onclick = locate;
-$('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; store = p.name; pickedCat = false; render(); } };
+$('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; store = p.name; picked = 'store'; render(); } };
 // Picking a category means "forget the store": no merchant rates, headline names the category
-$('cat').onchange = () => { store = ''; pickedCat = true; $('place').value = ''; render(); };
+$('cat').onchange = () => { store = ''; picked = 'cat'; $('place').value = ''; render(); };
 load();
 
 // Sticker: different photo than last time, random silly spot, random tilt
