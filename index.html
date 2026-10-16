@@ -48,7 +48,7 @@ ol{padding-left:20px}
 
 <details class="panel">
   <summary>Cards</summary>
-  <p class="muted">One card per line: <code>Name | category rate, …</code>. Categories: gas, grocery, pharmacy, dining, travel, wholesale, other. <code>other</code> is the fallback rate.</p>
+  <p class="muted">One card per line: <code>Name | category rate, …</code>. Categories: gas, grocery, pharmacy, dining, travel, wholesale, other. <code>other</code> is the fallback rate. Anything else is a merchant and beats the category there, e.g. <code>Chase Freedom Flex | walmart 5, other 1</code> (matches "Walmart Supercenter" too).</p>
   <textarea id="cards"></textarea>
 </details>
 
@@ -71,9 +71,13 @@ const BRANDS = {cvs:'pharmacy',walgreens:'pharmacy','rite aid':'pharmacy',duane:
 // Shared settings everyone reads live in cards.json in this repo; ?manage edits and commits it
 const REPO = 'adamwl16/card-picker';
 
+// "Walmart Supercenter" starts with "walmart"; whole words only, so "bp" doesn't match "Bpx"
+function startsWord(name, key){
+  const n = (name||'').toLowerCase().replace(/’/g, "'");
+  return new RegExp('^' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(n);
+}
 function brandCat(name){
-  const n = (name||'').toLowerCase();
-  for (const b in BRANDS) if (new RegExp('^'+b+'\\b').test(n)) return BRANDS[b];
+  for (const b in BRANDS) if (startsWord(name, b)) return BRANDS[b];
 }
 function category(t){
   return brandCat(t.brand) || brandCat(t.name) || TAGS[t.amenity] || TAGS[t.shop] || TAGS[t.tourism] || 'other';
@@ -85,10 +89,16 @@ function parseCards(text){
       .map(([, k, v]) => [k.toLowerCase(), parseFloat(v)]))
   }));
 }
-function rank(cards, cat, best = {}){
-  const pin = c => c.name === best[cat] ? 1 : 0;
-  return cards.map(c => ({...c, rate: c.rates[cat] ?? c.rates.other ?? 1}))
-    .sort((a, b) => pin(b) - pin(a) || b.rate - a.rate);
+// Rate keys that aren't categories are merchants ("walmart 5") and beat the card's category rate there.
+// The manager's pinned card for the category wins unless another card has a higher merchant rate.
+function rank(cards, cat, best = {}, store = ''){
+  const scored = cards.map(c => {
+    const m = Object.keys(c.rates).find(k => !CATS.includes(k) && startsWord(store, k));
+    return {...c, merchant: !!m, rate: m ? c.rates[m] : c.rates[cat] ?? c.rates.other ?? 1};
+  });
+  const pin = scored.find(c => c.name === best[cat]);
+  const top = pin && !scored.some(c => c.merchant && c.rate > pin.rate) ? pin.name : null;
+  return scored.sort((a, b) => (b.name === top) - (a.name === top) || b.rate - a.rate);
 }
 function meters(lat1, lon1, lat2, lon2){
   const r = Math.PI/180, x = (lon2-lon1)*r*Math.cos((lat1+lat2)/2*r), y = (lat2-lat1)*r;
@@ -97,7 +107,7 @@ function meters(lat1, lon1, lat2, lon2){
 
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
-let best = {}, places = [];
+let best = {}, places = [], store = '';
 $('manager').hidden = !new URLSearchParams(location.search).has('manage');
 try { $('token').value = localStorage.getItem('ghToken') || ''; } catch {}
 $('cat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
@@ -140,9 +150,10 @@ $('publish').onclick = async () => {
 };
 
 function render(){
-  const ranked = rank(parseCards($('cards').value), $('cat').value, best);
-  $('best').textContent = ranked[0] ? `${ranked[0].name} · ${ranked[0].rate}x` : 'Add cards below';
-  $('ranked').innerHTML = ranked.slice(1).map(c => `<li>${esc(c.name)} · ${c.rate}x</li>`).join('');
+  const ranked = rank(parseCards($('cards').value), $('cat').value, best, store);
+  const label = c => `${c.name} · ${c.rate}x` + (c.merchant ? ` at ${store}` : '');
+  $('best').textContent = ranked[0] ? label(ranked[0]) : 'Add cards below';
+  $('ranked').innerHTML = ranked.slice(1).map(c => `<li>${esc(label(c))}</li>`).join('');
 }
 
 async function nearby(lat, lon){
@@ -168,10 +179,10 @@ $('locate').onclick = () => {
       ? places.map((p, i) => `<option value="${i}">${esc(p.name)} —${p.cat} (${p.d} m)</option>`).join('')
       : '<option value="">— none found, pick a category —</option>';
     $('status').textContent = places.length ? `Closest: ${places[0].name}. Wrong? Pick another below.` : 'No stores found nearby.';
-    if (places.length) { $('cat').value = places[0].cat; render(); }
+    if (places.length) { $('cat').value = places[0].cat; store = places[0].name; render(); }
   }, e => $('status').textContent = 'Location error: ' + e.message, {enableHighAccuracy: true, timeout: 15000});
 };
-$('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; render(); } };
+$('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; store = p.name; render(); } };
 $('cat').onchange = render;
 load();
 
@@ -186,6 +197,11 @@ if (location.hash === '#test') {
   console.assert(r[0].name === 'A' && r[0].rate === 5);
   console.assert(rank(parseCards('A | gas 5, other 1\nB | other 2'), 'dining')[0].name === 'B');
   console.assert(rank(parseCards('A | gas 5, other 1\nB | other 2'), 'gas', {gas:'B'})[0].name === 'B');
+  const M = parseCards('Amex | grocery 4, other 1\nFlex | walmart 5, other 1\nDbl | other 2');
+  console.assert(rank(M, 'grocery', {}, 'Walmart Supercenter')[0].name === 'Flex');
+  console.assert(rank(M, 'grocery', {grocery:'Amex'}, 'Walmart Supercenter')[0].name === 'Flex');
+  console.assert(rank(M, 'grocery', {grocery:'Dbl'}, 'Kroger')[0].name === 'Dbl');
+  console.assert(rank(M, 'grocery', {}, 'Walmartian Deli')[0].name === 'Amex');
   console.log('self-check done');
 }
 </script>
