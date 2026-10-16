@@ -283,7 +283,8 @@ load();
     ['.locate-panel', 'left:-10px;bottom:-34px'], ['.locate-panel', 'right:10px;top:-46px']];
   let last = -1;
   try { last = +localStorage.getItem('sticker'); } catch {}
-  const n = (last + 1 + Math.floor(Math.random() * 3)) % 4;  // any of the other 3
+  const N = 5;  // photos in stickers/1.png … N.png
+  const n = (last + 1 + Math.floor(Math.random() * (N - 1))) % N;  // any but the last one shown
   try { localStorage.setItem('sticker', n); } catch {}
   const [host, pos] = spots[Math.floor(Math.random() * spots.length)];
   const img = Object.assign(new Image(), {src: `stickers/${n + 1}.png`, alt: '', className: 'sticker'});
