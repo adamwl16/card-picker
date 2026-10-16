@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Picker</title>
+<style>
+:root{--bg:#fff;--fg:#111;--muted:#666;--panel:#f2f2f5;--accent:#0a7c55}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#eee;--muted:#999;--panel:#1c1c1e;--accent:#30d18c}}
+body{font:16px -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0 auto;padding:16px;max-width:560px}
+h1{font-size:1.4rem}
+.panel{background:var(--panel);border-radius:14px;padding:16px;margin:12px 0}
+.muted{color:var(--muted);font-size:.9rem}
+#best{font-size:1.5rem;font-weight:700;color:var(--accent)}
+button,a.btn,select,textarea{font:inherit;width:100%;box-sizing:border-box;border-radius:10px;padding:12px;margin-top:8px}
+button,a.btn{border:0;background:var(--fg);color:var(--bg);display:block;text-align:center;text-decoration:none;font-weight:600}
+input{font:inherit;width:100%;box-sizing:border-box;border-radius:10px;padding:12px;margin-top:8px}
+input,select,textarea{border:1px solid var(--muted);background:var(--bg);color:var(--fg)}
+textarea{min-height:140px;font-family:ui-monospace,monospace;font-size:.85rem}
+ol{padding-left:20px}
+</style>
+</head>
+<body>
+<h1>Which card?</h1>
+<button id="locate">📍 Find where I am</button>
+<p id="status" class="muted"></p>
+
+<div class="panel">
+  <label class="muted">Store <select id="place"><option value="">— none found —</option></select></label>
+  <label class="muted">Category <select id="cat"></select></label>
+</div>
+
+<div class="panel">
+  <div class="muted">Best card</div>
+  <div id="best">—</div>
+  <ol id="ranked" class="muted"></ol>
+  <!-- ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
+  <a class="btn" href="shoebox://">Open Apple Wallet</a>
+</div>
+
+<div id="manager" hidden>
+<h1>Manager</h1>
+<details class="panel" open>
+  <summary>Best card per category</summary>
+  <p class="muted">Pick the card to use for each category. "Auto" uses the highest rate from Cards.</p>
+  <div id="overrides"></div>
+</details>
+
+<details class="panel">
+  <summary>Cards</summary>
+  <p class="muted">One card per line: <code>Name | category rate, …</code>. Categories: gas, grocery, pharmacy, dining, travel, wholesale, other. <code>other</code> is the fallback rate.</p>
+  <textarea id="cards"></textarea>
+</details>
+
+<div class="panel">
+  <label class="muted">GitHub token (fine-grained, Contents read/write on this repo only; stays on this device)
+    <input id="token" type="password" autocomplete="off"></label>
+  <button id="publish">Publish to everyone</button>
+  <p id="pubStatus" class="muted"></p>
+</div>
+</div>
+
+<script>
+const CATS = ['gas','grocery','pharmacy','dining','travel','wholesale','other'];
+// OSM tag value → category
+const TAGS = {fuel:'gas',pharmacy:'pharmacy',chemist:'pharmacy',supermarket:'grocery',grocery:'grocery',greengrocer:'grocery',
+  restaurant:'dining',fast_food:'dining',cafe:'dining',bar:'dining',pub:'dining',food_court:'dining',hotel:'travel',motel:'travel',wholesale:'wholesale'};
+// Brand name → category, wins over OSM tags (e.g. a Shell's convenience shop is still gas)
+const BRANDS = {cvs:'pharmacy',walgreens:'pharmacy','rite aid':'pharmacy',duane:'pharmacy',shell:'gas',chevron:'gas',exxon:'gas',mobil:'gas',bp:'gas',
+  sunoco:'gas',citgo:'gas',valero:'gas',arco:'gas',costco:'wholesale',"sam's club":'wholesale',"bj's wholesale":'wholesale'};
+// Shared settings everyone reads live in cards.json in this repo; ?manage edits and commits it
+const REPO = 'adamwl16/card-picker';
+
+function brandCat(name){
+  const n = (name||'').toLowerCase();
+  for (const b in BRANDS) if (new RegExp('^'+b+'\\b').test(n)) return BRANDS[b];
+}
+function category(t){
+  return brandCat(t.brand) || brandCat(t.name) || TAGS[t.amenity] || TAGS[t.shop] || TAGS[t.tourism] || 'other';
+}
+function parseCards(text){
+  return text.split('\n').map(l => l.split('|')).filter(p => p[0].trim()).map(([name, r='']) => ({
+    name: name.trim(),
+    rates: Object.fromEntries(r.split(',').map(s => s.trim().match(/^(.+?)\s+([\d.]+)/)).filter(Boolean)
+      .map(([, k, v]) => [k.toLowerCase(), parseFloat(v)]))
+  }));
+}
+function rank(cards, cat, best = {}){
+  const pin = c => c.name === best[cat] ? 1 : 0;
+  return cards.map(c => ({...c, rate: c.rates[cat] ?? c.rates.other ?? 1}))
+    .sort((a, b) => pin(b) - pin(a) || b.rate - a.rate);
+}
+function meters(lat1, lon1, lat2, lon2){
+  const r = Math.PI/180, x = (lon2-lon1)*r*Math.cos((lat1+lat2)/2*r), y = (lat2-lat1)*r;
+  return Math.round(Math.hypot(x, y) * 6371e3);
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
+let best = {}, places = [];
+$('manager').hidden = !new URLSearchParams(location.search).has('manage');
+try { $('token').value = localStorage.getItem('ghToken') || ''; } catch {}
+$('cat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
+$('cat').value = 'other';
+
+function renderOverrides(){
+  const names = parseCards($('cards').value).map(c => c.name);
+  $('overrides').innerHTML = CATS.map(cat => `<label class="muted">${cat}<select data-cat="${cat}">
+    <option value="">Auto</option>${names.map(n => `<option${best[cat] === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}
+  </select></label>`).join('');
+}
+$('overrides').onchange = e => { best[e.target.dataset.cat] = e.target.value; render(); };
+$('cards').oninput = () => { renderOverrides(); render(); };
+
+async function load(){
+  try {
+    const cfg = await (await fetch('cards.json', {cache: 'no-store'})).json();
+    $('cards').value = cfg.cards; best = cfg.best || {};
+  } catch (e) { $('status').textContent = 'Could not load cards: ' + e.message; }
+  renderOverrides(); render();
+}
+
+$('publish').onclick = async () => {
+  const token = $('token').value.trim(), say = t => $('pubStatus').textContent = t;
+  if (!token) return say('Paste a GitHub token first.');
+  try { localStorage.setItem('ghToken', token); } catch {}
+  const api = `https://api.github.com/repos/${REPO}/contents/cards.json`;
+  const headers = {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json'};
+  say('Publishing…');
+  try {
+    const cur = await fetch(api, {headers, cache: 'no-store'});
+    if (!cur.ok) throw new Error('read ' + cur.status);
+    const json = JSON.stringify({cards: $('cards').value.trim(), best}, null, 2) + '\n';
+    const put = await fetch(api, {method: 'PUT', headers, body: JSON.stringify({
+      message: 'Update cards', sha: (await cur.json()).sha,
+      content: btoa(String.fromCharCode(...new TextEncoder().encode(json)))})});
+    if (!put.ok) throw new Error('write ' + put.status + ' ' + (await put.json()).message);
+    say('Published. Everyone sees it within ~1 minute.');
+  } catch (e) { say('Publish failed: ' + e.message); }
+};
+
+function render(){
+  const ranked = rank(parseCards($('cards').value), $('cat').value, best);
+  $('best').textContent = ranked[0] ? `${ranked[0].name} · ${ranked[0].rate}x` : 'Add cards below';
+  $('ranked').innerHTML = ranked.slice(1).map(c => `<li>${esc(c.name)} · ${c.rate}x</li>`).join('');
+}
+
+async function nearby(lat, lon){
+  const q = `[out:json][timeout:10];nwr(around:150,${lat},${lon})[name][~"^(shop|amenity|tourism)$"~"."];out tags center 40;`;
+  const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q);
+  // ponytail: free public OSM server, sometimes 502s when busy; one retry, swap to Google Places if it's too flaky
+  let res = await fetch(url);
+  if (res.status >= 500) { await new Promise(r => setTimeout(r, 3000)); res = await fetch(url); }
+  if (!res.ok) throw new Error('Overpass ' + res.status);
+  return (await res.json()).elements
+    .filter(e => e.tags.shop || TAGS[e.tags.amenity] || TAGS[e.tags.tourism] || brandCat(e.tags.brand || e.tags.name))
+    .map(e => ({name: e.tags.name, cat: category(e.tags), d: meters(lat, lon, e.lat ?? e.center.lat, e.lon ?? e.center.lon)}))
+    .sort((a, b) => a.d - b.d);
+}
+
+$('locate').onclick = () => {
+  if (!navigator.geolocation) return $('status').textContent = 'Geolocation not supported.';
+  $('status').textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(async ({coords}) => {
+    $('status').textContent = `Looking up stores near you (±${Math.round(coords.accuracy)} m)…`;
+    try {
+      places = await nearby(coords.latitude, coords.longitude);
+    } catch (e) { return $('status').textContent = 'Store lookup failed: ' + e.message; }
+    $('place').innerHTML = places.length
+      ? places.map((p, i) => `<option value="${i}">${esc(p.name)} —${p.cat} (${p.d} m)</option>`).join('')
+      : '<option value="">— none found, pick a category —</option>';
+    $('status').textContent = places.length ? `Closest: ${places[0].name}. Wrong? Pick another below.` : 'No stores found nearby.';
+    if (places.length) { $('cat').value = places[0].cat; render(); }
+  }, e => $('status').textContent = 'Location error: ' + e.message, {enableHighAccuracy: true, timeout: 15000});
+};
+$('place').onchange = e => { const p = places[e.target.value]; if (p) { $('cat').value = p.cat; render(); } };
+$('cat').onchange = render;
+load();
+
+// Self-check: open with #test, see console
+if (location.hash === '#test') {
+  console.assert(category({name:'CVS Pharmacy', shop:'chemist'}) === 'pharmacy');
+  console.assert(category({name:'Shell', shop:'convenience'}) === 'gas');
+  console.assert(category({name:"Joe's", amenity:'fuel'}) === 'gas');
+  console.assert(category({name:'Whole Foods', shop:'supermarket'}) === 'grocery');
+  console.assert(category({name:'Bpx Hardware', shop:'hardware'}) === 'other');
+  const r = rank(parseCards('A | gas 5, other 1\nB | other 2'), 'gas');
+  console.assert(r[0].name === 'A' && r[0].rate === 5);
+  console.assert(rank(parseCards('A | gas 5, other 1\nB | other 2'), 'dining')[0].name === 'B');
+  console.assert(rank(parseCards('A | gas 5, other 1\nB | other 2'), 'gas', {gas:'B'})[0].name === 'B');
+  console.log('self-check done');
+}
+</script>
+</body>
+</html>
