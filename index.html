@@ -179,6 +179,7 @@ function meters(lat1, lon1, lat2, lon2){
 }
 
 const $ = id => document.getElementById(id);
+const feet = m => Math.round(m * 3.281);
 const esc = s => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
 let best = {}, places = [], store = '', picked = '';
 $('manager').hidden = !new URLSearchParams(location.search).has('manage');
@@ -260,12 +261,12 @@ function locate(){
   if (!navigator.geolocation) return $('status').textContent = 'Geolocation not supported.';
   $('status').textContent = 'Locating…';
   navigator.geolocation.getCurrentPosition(async ({coords}) => {
-    $('status').textContent = `Looking up stores near you (±${Math.round(coords.accuracy)} m)…`;
+    $('status').textContent = `Looking up stores near you (±${feet(coords.accuracy)} ft)…`;
     try {
       places = await nearby(coords.latitude, coords.longitude);
     } catch (e) { return $('status').textContent = 'Store lookup failed: ' + e.message; }
     $('place').innerHTML = places.length
-      ? '<option value="" hidden>Choose a store</option>' + places.map((p, i) => `<option value="${i}">${esc(p.name)} · ${p.d} m</option>`).join('')
+      ? '<option value="" hidden>Choose a store</option>' + places.map((p, i) => `<option value="${i}">${esc(p.name)} · ${feet(p.d)} ft</option>`).join('')
       : '<option value="">None found</option>';
     $('status').textContent = places.length ? '' : 'No stores found nearby. Pick a category below.';
     if (places.length) { $('place').value = '0'; $('cat').value = places[0].cat; store = places[0].name; picked = ''; render(); }
