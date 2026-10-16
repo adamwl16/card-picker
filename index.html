@@ -45,9 +45,7 @@ html,body{overflow-x:clip}
 .best-row{display:flex;align-items:center;gap:12px;margin-top:16px}
 .best-row>div{flex:1;min-width:0}
 #bestName{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
-.wallet{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:99px;
-  background:#000;color:#fff;border:1px solid #333;font-weight:600;font-size:.9rem;text-decoration:none}
-.wallet:active{opacity:.8}
+.best-row .hint{flex:none;max-width:7.5em;text-align:right;font-size:.75rem;line-height:1.3}
 #bestWhy{color:var(--accent);font-weight:600}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;margin-top:14px;border:0;border-radius:14px;
   font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
@@ -56,7 +54,8 @@ html,body{overflow-x:clip}
 [hidden],.status:empty{display:none!important}
 #headline{font-size:1.5rem;line-height:1.25}
 #headline .where{color:var(--accent)}
-.hero-wrap{margin-top:16px}
+.hero-wrap{display:block;margin-top:16px;-webkit-tap-highlight-color:transparent;transition:transform .12s}
+.hero-wrap:active{transform:scale(.97)}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
 .panel .btn:first-child{margin-top:0}
@@ -85,13 +84,11 @@ code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
 <p id="status" class="status"></p>
 <button id="locate" class="btn primary">📍 Find my store</button>
 
-<div class="hero-wrap"><div id="hero"></div></div>
+<!-- Tapping the card opens Wallet. ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
+<a class="hero-wrap" href="shoebox://" aria-label="Open Apple Wallet"><div id="hero"></div></a>
 <div class="best-row">
   <div><div id="bestName"></div><div id="bestWhy"></div></div>
-  <!-- ponytail: Apple exposes no URL to open a specific card; shoebox:// opens the Wallet app (iOS only, unofficial) -->
-  <a class="wallet" href="shoebox://" aria-label="Open Apple Wallet">
-    <svg width="18" height="14" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="1" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1 6h18" stroke="currentColor" stroke-width="2"/></svg>
-    Wallet</a>
+  <span class="hint">Tap card to open Wallet</span>
 </div>
 
 <h2 class="plain">Not right? Choose somewhere close by or a different category</h2>
