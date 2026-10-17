@@ -98,8 +98,11 @@ code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:5px}
     <label style="margin-top:0">Category <select id="cat"></select></label>
   </div></div>
 
-<h2>Other cards</h2>
+<div id="otherCards">
+<h2 id="otherHead">Other cards</h2>
 <ul id="ranked" class="list panel"></ul>
+<p id="hiddenNote" class="status"></p>
+</div>
 
 <div id="manager" hidden>
   <h2>Manager · best card per category</h2>
@@ -228,7 +231,11 @@ function cardArt(c, small, rate){
 }
 
 function render(){
-  const [top, ...rest] = rank(parseCards($('cards').value), $('cat').value, best, store);
+  const cards = parseCards($('cards').value);
+  const [top, ...all] = rank(cards, $('cat').value, best, store);
+  // A card earning less than the best "earns this anywhere" rate (e.g. a 2x flat card) can never be the right pick
+  const floor = Math.max(1, ...cards.map(c => c.rates.other ?? 1));
+  const rest = all.filter(c => c.rate >= floor), hidden = all.length - rest.length;
   $('hero').innerHTML = top ? cardArt(top, false, top.rate) : '<div class="empty">No cards yet</div>';
   const cat = $('cat').value;
   // picked: '' = nearest store from GPS, 'store'/'cat' = the person chose one in "Not right?"
@@ -239,8 +246,10 @@ function render(){
   $('locate').hidden = !!(store || picked);
   $('bestName').textContent = top ? top.name : '';
   $('bestWhy').textContent = top ? `${top.rate}x ` + (top.merchant ? `at ${store}` : `on ${$('cat').value}`) : '';
-  $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<div><span>${esc(c.name)}</span><b>${c.rate}x</b></div></li>`).join('')
-    || '<li><span class="hint">None</span></li>';
+  $('ranked').innerHTML = rest.map(c => `<li>${cardArt(c, true)}<div><span>${esc(c.name)}</span><b>${c.rate}x</b></div></li>`).join('');
+  $('otherCards').hidden = !rest.length && !hidden;
+  $('ranked').hidden = $('otherHead').hidden = !rest.length;
+  $('hiddenNote').textContent = hidden ? `${hidden} lower-earning card${hidden > 1 ? 's' : ''} hidden (under ${floor}x here)` : '';
 }
 
 async function nearby(lat, lon){
